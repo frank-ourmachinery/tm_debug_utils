@@ -4,6 +4,7 @@
 #endif
 
 #include <foundation/allocator.h>
+#include <foundation/api_registry.h>
 #include <foundation/carray.inl>
 #include <foundation/log.h>
 #include <foundation/murmurhash64a.inl>
@@ -135,8 +136,7 @@ int main(int argc, char **argv)
 	const tm_clock_o start_time = tm_os_api->time->now();
 
 	if (query) {
-		tm_logger_api->print(TM_LOG_TYPE_INFO, "--search is currently unavailable.\n");
-		//tm_logger_api->printf(TM_LOG_TYPE_INFO, "dbgutils: '%s'\n", tm_debug_utils_api->decode_hash(strtoull(query, NULL, 16), ta));
+		tm_logger_api->printf(TM_LOG_TYPE_INFO, "dbgutils: '%s'\n", tm_debug_utils_api->decode_hash(strtoull(query, NULL, 16), ta));
 	}
 
 	if (generate) {

@@ -91,6 +91,20 @@ project "debug-utils"
     filter "platforms:Win64"
         targetdir "$(TM_SDK_DIR)/bin/plugins"
 		
+project "debug-utils-static"
+    location "build/debug_utils"
+    targetname "tm_debug_utils_static"
+    kind "StaticLib"
+    language "C++"
+	folder{ "shared", "tm_debug_utils" }
+	includedirs { "shared", "tm_debug_utils", "$(TM_SDK_DIR)" }
+	libdirs { "$(TM_SDK_DIR)/bin/%{cfg.buildcfg}" }
+	links { "foundation.lib" }
+	defines { "TM_LINKS_FOUNDATION", "TM_LINKS_DEBUG_UTILS" }
+    sysincludedirs { "" }
+    filter "platforms:Win64"
+        targetdir "build/debug_utils_static/lib"
+		
 project "symbols"
     location "build/symbols"
     targetname "symbols"
@@ -98,8 +112,8 @@ project "symbols"
     language "C++"
 	folder{ "symbols" }
 	includedirs { "symbols", "shared", "tm_debug_utils", "$(TM_SDK_DIR)" }
-	libdirs { "$(TM_SDK_DIR)/bin/%{cfg.buildcfg}", "$(TM_SDK_DIR)/bin/plugins" }
-	links { "foundation.lib", "tm_debug_utils.lib" }
+	libdirs { "$(TM_SDK_DIR)/bin/%{cfg.buildcfg}", "build/debug_utils_static/lib" }
+	links { "foundation.lib", "tm_debug_utils_static.lib" }
 	defines { "TM_LINKS_FOUNDATION", "TM_LINKS_DEBUG_UTILS" }
     sysincludedirs { "" }
     filter "platforms:Win64"
