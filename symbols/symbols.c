@@ -52,6 +52,9 @@ static void print_usage()
 		"	--page [NUMBER]\n"
 		"		When dumping a file to the user, stops after every [NUMBER] entries and waits for user input.\n"
 		"\n"
+		"	--decimal\n"
+		"		Uses a radix of 10 instead of 16 when converting --search inputs to numbers.\n"
+		"\n"
 		"	-g\n"
 		"	--generate\n"
 		"		Generates a .tmpdb file for the specified files or for all child files in the current directory.\n"
@@ -83,9 +86,10 @@ int main(int argc, char **argv)
 
 	bool generate = false;
 	bool dump = false;
+	int radix = 16;
 	const char *path = tm_path_api_dir(argv[0], tm_path_api->split(argv[0], NULL), ta);
 	const char *output = 0;
-	const char *query = 0;
+	const char **queries = 0;
 
 	for (int i = 1; i < argc; ++i) {
 		if (arg_eql(argv[i], "-h", "--help")) {
@@ -96,6 +100,7 @@ int main(int argc, char **argv)
 		else if (arg_eql(argv[i], "-q", "--quiet")) loud = false;
 		else if (arg_eql(argv[i], "-g", "--generate")) generate = true;
 		else if (arg_eql(argv[i], "-d", "--dump")) dump = true;
+		else if (!strcmp(argv[i], "--decimal")) radix = 10;
 		else if (arg_eql(argv[i], "-i", "--input")) {
 			if (i + 1 < argc) path = argv[++i];
 			else {
@@ -111,7 +116,7 @@ int main(int argc, char **argv)
 			}
 		}
 		else if (arg_eql(argv[i], "-s", "--search")) {
-			if (i + 1 < argc) query = argv[++i];
+			if (i + 1 < argc) tm_carray_temp_push(queries, argv[++i], ta);
 			else {
 				tm_logger_api->print(TM_LOG_TYPE_ERROR, "dbgutils: no query was specified after --search!\n");
 				return EXIT_FAILURE;
@@ -135,8 +140,11 @@ int main(int argc, char **argv)
 
 	const tm_clock_o start_time = tm_os_api->time->now();
 
-	if (query) {
-		tm_logger_api->printf(TM_LOG_TYPE_INFO, "dbgutils: '%s'\n", tm_debug_utils_api->decode_hash(strtoull(query, NULL, 16), ta));
+	if (path)
+		tm_debug_utils_api->add_symbols(path);
+
+	for (size_t i = 0; i < tm_carray_size(queries); ++i) {
+		tm_logger_api->printf(TM_LOG_TYPE_INFO, "dbgutils: %s = '%s'\n", queries[i], tm_debug_utils_api->decode_hash(strtoull(queries[i], NULL, radix), ta));
 	}
 
 	if (generate) {
@@ -158,7 +166,7 @@ int main(int argc, char **argv)
 
 	const tm_clock_o end_time = tm_os_api->time->now();
 	const float elapsed = (float)tm_os_api->time->delta(end_time, start_time);
-	printf_loud("dbgutils: done, took %.3f s\n", elapsed);
+	printf_loud("\ndbgutils: done, took %.3f s\n", elapsed);
 	TM_SHUTDOWN_TEMP_ALLOCATOR(ta);
 	return EXIT_SUCCESS;
 }

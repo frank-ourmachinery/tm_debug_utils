@@ -71,6 +71,7 @@ static void api__search_symbols(const char *path)
 				tree.nodes = tm_alloc(tm_allocator_api->system, tree.node_count * sizeof(tm_symbol_node_t));
 				tm_os_api->file_io->read(file, tree.nodes, tree.node_count * sizeof(tm_symbol_node_t));
 				tm_carray_push(trees, tree, tm_allocator_api->system);
+				tm_os_api->file_io->close(file);
 			}
 		}
 	}
