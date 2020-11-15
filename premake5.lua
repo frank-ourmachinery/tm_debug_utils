@@ -89,7 +89,7 @@ project "debug-utils"
 	defines { "TM_LINKS_FOUNDATION", "TM_LINKS_DEBUG_UTILS" }
     sysincludedirs { "" }
     filter "platforms:Win64"
-        targetdir "$(TM_SDK_DIR)/bin/plugins"
+        targetdir "$(TM_SDK_DIR)/bin/%{cfg.buildcfg}/plugins"
 		
 project "debug-utils-static"
     location "build/debug_utils"
