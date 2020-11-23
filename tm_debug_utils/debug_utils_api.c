@@ -103,10 +103,11 @@ static const char *api__decode_hash(uint64_t hash, tm_temp_allocator_i *ta)
 	return 0;
 }
 
-static bool api__try_decode_hash(uint64_t hash, const char **result, tm_temp_allocator_i *ta)
+static const char *api__try_decode_hash(uint64_t hash, tm_temp_allocator_i *ta)
 {
-	*result = api__decode_hash(hash, ta);
-	return *result;
+	const char *result = api__decode_hash(hash, ta);
+	if (!result) result = tm_temp_allocator_api->printf(ta, "%llx", hash);
+	return result;
 }
 
 struct tm_debug_utils_api *tm_debug_utils_api = &(struct tm_debug_utils_api)

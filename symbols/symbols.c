@@ -82,7 +82,7 @@ int main(int argc, char **argv)
 #endif
 
 	TM_INIT_TEMP_ALLOCATOR(ta);
-	tm_logger_api->add_logger(tm_logger_api->printf_logger);
+	tm_logger_api->add_logger(tm_logger_api->default_logger);
 
 	bool generate = false;
 	bool dump = false;
