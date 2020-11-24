@@ -98,4 +98,8 @@ static inline void tm_symbol_tree_free(tm_allocator_i *a, tm_symbol_tree_t *tree
 {
 	const uint32_t size = (tree->node_capacity > tree->node_count ? tree->node_capacity : tree->node_count) * sizeof(tm_symbol_node_t);
 	tm_free(a, tree->nodes, size);
+
+	tree->nodes = 0;
+	tree->node_capacity = 0;
+	tree->node_count = 0;
 }

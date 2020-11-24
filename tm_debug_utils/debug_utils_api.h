@@ -15,7 +15,10 @@ struct tm_debug_utils_api
 	// Result is allocated with the specified allocator or null if the hash was not found.
 	const char *(*try_decode_hash)(uint64_t hash, struct tm_temp_allocator_i *ta);
 	// Searches the specified path and sub directories for The Machinery symbols.
-	void (*add_symbols)(const char *path);
+	void (*add_symbol_database)(const char *path);
+	// Adds the specified string to a runtime database that shares its lifetime with the dll.
+	// Returns the hash generated.
+	uint64_t(*add_hash)(const char *string);
 };
 
 #if defined(TM_LINKS_DEBUG_UTILS)

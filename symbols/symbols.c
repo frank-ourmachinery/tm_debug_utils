@@ -141,7 +141,7 @@ int main(int argc, char **argv)
 	const tm_clock_o start_time = tm_os_api->time->now();
 
 	if (path)
-		tm_debug_utils_api->add_symbols(path);
+		tm_debug_utils_api->add_symbol_database(path);
 
 	for (size_t i = 0; i < tm_carray_size(queries); ++i) {
 		tm_logger_api->printf(TM_LOG_TYPE_INFO, "dbgutils: %s = '%s'\n", queries[i], tm_debug_utils_api->decode_hash(strtoull(queries[i], NULL, radix), ta));
