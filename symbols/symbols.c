@@ -23,6 +23,8 @@
 static bool loud = true;
 static uint32_t page_threshold = 0;
 
+#include "binary_handler.inl"
+#include "huffman.inl"
 #include "tree.inl"
 #include "generate.inl"
 #include "dump.inl"
