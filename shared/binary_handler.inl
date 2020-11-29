@@ -25,10 +25,7 @@ static inline bool tm_binary_handler_read_single_bit(const char *src, uint64_t *
 {
 	const uint8_t *data = (const uint8_t *)src;
 	const uint8_t mask = 1 << (*bit_offset & 7);
-	const bool result = data[*bit_offset >> 3] & mask;
-
-	++(*bit_offset);
-	return result;
+	return data[(*bit_offset)++ >> 3] & mask;
 }
 
 static inline void tm_binary_handler_write_bits(char *dst, uint64_t *bit_offset, uint32_t bits, uint32_t count)

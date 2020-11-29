@@ -59,8 +59,12 @@ static void print_usage()
 		"\n"
 		"	-g\n"
 		"	--generate\n"
-		"		Generates a .tmpdb file for the specified files or for all child files in the current directory.\n"
+		"		Generates a symbols file for the specified files or for all child files in the current directory.\n"
 		"		This file contains The Machinery specific debugging information, like a hash lookup table.\n"
+		"\n"
+		"	-c\n"
+		"	--compress\n"
+		"		Compresses the strings in the symbols file (only active with --generate).\n"
 		"\n"
 		"	-i [STRING]\n"
 		"	--input [STRING]\n"
@@ -68,7 +72,7 @@ static void print_usage()
 		"\n"
 		"	-o [STRING]\n"
 		"	--output [STRING]\n"
-		"		Specifies the output path for the .tmpdb file if --generate is active or for a dump file if --dump is active.\n"
+		"		Specifies the output path for the symbols file if --generate is active or for a dump file if --dump is active.\n"
 		"\n");
 }
 
@@ -86,6 +90,7 @@ int main(int argc, char **argv)
 	TM_INIT_TEMP_ALLOCATOR(ta);
 	tm_logger_api->add_logger(tm_logger_api->default_logger);
 
+	bool compress = false;
 	bool generate = false;
 	bool dump = false;
 	int radix = 16;
@@ -101,6 +106,7 @@ int main(int argc, char **argv)
 		}
 		else if (arg_eql(argv[i], "-q", "--quiet")) loud = false;
 		else if (arg_eql(argv[i], "-g", "--generate")) generate = true;
+		else if (arg_eql(argv[i], "-c", "--compress")) compress = true;
 		else if (arg_eql(argv[i], "-d", "--dump")) dump = true;
 		else if (!strcmp(argv[i], "--decimal")) radix = 10;
 		else if (arg_eql(argv[i], "-i", "--input")) {
@@ -151,7 +157,7 @@ int main(int argc, char **argv)
 
 	if (generate) {
 		if (!output) output = tm_temp_allocator_api->printf(ta, "%s/%s", tm_path_api_dir(argv[0], tm_path_api->split(argv[0], NULL), ta), tm_path_api->split(path, NULL));
-		tm_symbols_search_and_save(tm_allocator_api->system, path, output);
+		tm_symbols_search_and_save(tm_allocator_api->system, path, output, compress);
 	}
 
 	if (dump) {

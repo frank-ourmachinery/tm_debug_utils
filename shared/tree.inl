@@ -1,9 +1,16 @@
 #define TM_SYMBOL_TREE_GROWTH 32
 
+enum
+{
+	TM_HDB_FLAGS_VERSION = 0x1,
+	TM_HDB_FLAGS_VERSION_MASK = 0xFFFF,
+	TM_HDB_FLAGS_COMPRESSED = 0x10000
+};
+
 typedef struct tm_symbol_node_t
 {
 	uint64_t hash;
-	uint64_t byte_offset;
+	uint64_t string_start;
 	uint32_t string_length;
 	TM_PAD(4);
 	uint32_t left;
@@ -47,7 +54,7 @@ static inline void tm_symbol_tree_insert(tm_allocator_i *a, tm_symbol_tree_t *tr
 	const uint32_t i = tree->node_count++;
 	tree->nodes[i] = (tm_symbol_node_t){
 		.hash = hash,
-		.byte_offset = offset,
+		.string_start = offset,
 		.string_length = string_length
 	};
 
@@ -89,9 +96,19 @@ static inline bool tm_symbol_tree_search_internal(const tm_symbol_tree_t *tree, 
 	return false;
 }
 
-static inline bool tm_symbol_tree_search(const tm_symbol_tree_t *tree, uint64_t hash, uint32_t *result_idx)
+static inline bool tm_symbol_tree_try_search(const tm_symbol_tree_t *tree, uint64_t hash, uint32_t *result_idx)
 {
 	return tree->nodes ? tm_symbol_tree_search_internal(tree, 0, hash, result_idx) : false;
+}
+
+static inline uint32_t tm_symbol_tree_search(const tm_symbol_tree_t *tree, uint64_t hash)
+{
+	uint32_t result_idx = 0;
+
+	if (tree->nodes)
+		tm_symbol_tree_search_internal(tree, 0, hash, &result_idx);
+
+	return result_idx;
 }
 
 static inline void tm_symbol_tree_free(tm_allocator_i *a, tm_symbol_tree_t *tree)

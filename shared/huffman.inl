@@ -174,3 +174,25 @@ static inline void tm_huffman_tree_free(tm_allocator_i *a, tm_huffman_tree_t *tr
 {
 	tm_free(a, tree->nodes, tree->node_count * sizeof(tm_huffman_node_t));
 }
+
+static inline void private__tree_node_dump(const tm_huffman_tree_t *tree, uint32_t root, char *buffer, uint32_t bit)
+{
+	const tm_huffman_node_t *node = tree->nodes + root;
+
+	if (node->data != '\0') {
+		buffer[bit] = '\0';
+		tm_logger_api->printf(TM_LOG_TYPE_DEBUG, "%c: %s\n", node->data, buffer);
+	}
+	else {
+		buffer[bit] = '0';
+		private__tree_node_dump(tree, node->left, buffer, bit + 1);
+		buffer[bit] = '1';
+		private__tree_node_dump(tree, node->right, buffer, bit + 1);
+	}
+}
+
+static inline void tm_huffman_tree_dump(const tm_huffman_tree_t *tree)
+{
+	char buffer[0xFF];
+	private__tree_node_dump(tree, 0, buffer, 0);
+}

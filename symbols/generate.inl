@@ -3,10 +3,16 @@
 static void tm_symbols_save(tm_symbol_tree_t *tree, const char **strings, const char *path)
 {
 	TM_INIT_TEMP_ALLOCATOR(ta);
+	const uint32_t flags = TM_HDB_FLAGS_VERSION;
+
+	const uint64_t adder = (sizeof(uint32_t) << 1) + tree->node_count * sizeof(tm_symbol_node_t);
+	for (tm_symbol_node_t *node = tree->nodes; node != tree->nodes + tree->node_count; ++node)
+		node->string_start += adder;
 
 	const char *path_with_extension = tm_temp_allocator_api->printf(ta, "%s.hdb", path);
 	tm_file_o file = tm_os_api->file_io->open_output(path_with_extension, false);
 
+	tm_os_api->file_io->write(file, &flags, sizeof(uint32_t));
 	tm_os_api->file_io->write(file, &tree->node_count, sizeof(uint32_t));
 	tm_os_api->file_io->write(file, tree->nodes, tree->node_count * sizeof(tm_symbol_node_t));
 
@@ -18,11 +24,52 @@ static void tm_symbols_save(tm_symbol_tree_t *tree, const char **strings, const 
 	TM_SHUTDOWN_TEMP_ALLOCATOR(ta);
 }
 
-static void tm_symbols_tree_finalize(tm_symbol_tree_t *tree)
+static void tm_symbols_save_compressed(tm_allocator_i *a, tm_symbol_tree_t *tree, const char **strings, const char *path)
 {
-	const uint64_t adder = sizeof(uint32_t) + tree->node_count * sizeof(tm_symbol_node_t);
-	for (tm_symbol_node_t *node = tree->nodes; node != tree->nodes + tree->node_count; ++node)
-		node->byte_offset += adder;
+	TM_INIT_TEMP_ALLOCATOR(ta);
+	const uint32_t flags = TM_HDB_FLAGS_VERSION | TM_HDB_FLAGS_COMPRESSED;
+
+	size_t buffer_capacity = 0;
+	const size_t string_count = tm_carray_size(strings);
+	for (size_t i = 0; i < string_count; ++i)
+		buffer_capacity += strlen(strings[i]);
+
+	tm_huffman_tree_t encoding = tm_huffman_tree_create(a, strings);
+	const size_t string_buffer_start = (sizeof(uint32_t) * 3 + tree->node_count * sizeof(tm_symbol_node_t) + encoding.node_count * sizeof(tm_huffman_node_t)) << 3;
+	char *buffer = tm_alloc(a, buffer_capacity);
+	memset(buffer, 0, buffer_capacity);
+
+	size_t buffer_offset_bits = 0;
+	for (size_t i = 0, j = 0; i < string_count; ++i, j = 0) {
+		const uint32_t node_idx = tm_symbol_tree_search(tree, tm_murmur_hash_string_inline(strings[i]));
+		tree->nodes[node_idx].string_start = string_buffer_start + buffer_offset_bits;
+
+		for (char c = *strings[i]; c != '\0'; c = strings[i][++j]) {
+			const uint32_t bit_count = tm_huffman_code__bit_count(encoding.code_lut[c]);
+			const uint32_t code_word = tm_huffman_code__code_word(encoding.code_lut[c]);
+			tm_binary_handler_write_bits(buffer, &buffer_offset_bits, code_word, bit_count);
+		}
+
+		tree->nodes[node_idx].string_length = (uint32_t)(buffer_offset_bits - (tree->nodes[node_idx].string_start - string_buffer_start));
+	}
+
+	printf_loud("\ndbgutils: compression saved %zu bytes.\n", buffer_capacity - (buffer_offset_bits >> 3));
+
+	const char *path_with_extension = tm_temp_allocator_api->printf(ta, "%s.hdb", path);
+	tm_file_o file = tm_os_api->file_io->open_output(path_with_extension, false);
+
+	tm_os_api->file_io->write(file, &flags, sizeof(uint32_t));
+	tm_os_api->file_io->write(file, &tree->node_count, sizeof(uint32_t));
+	tm_os_api->file_io->write(file, tree->nodes, tree->node_count * sizeof(tm_symbol_node_t));
+	tm_os_api->file_io->write(file, &encoding.node_count, sizeof(uint32_t));
+	tm_os_api->file_io->write(file, encoding.nodes, encoding.node_count * sizeof(tm_huffman_node_t));
+
+	tm_os_api->file_io->write(file, buffer, buffer_offset_bits >> 3);
+	tm_huffman_tree_free(a, &encoding);
+	tm_free(a, buffer, buffer_capacity);
+
+	tm_os_api->file_io->close(file);
+	TM_SHUTDOWN_TEMP_ALLOCATOR(ta);
 }
 
 static void tm_symbols_add_entry(tm_allocator_i *a, tm_symbol_tree_t *tree, const char ***string_buffer, uint64_t *offset, const char *string)
@@ -135,15 +182,18 @@ static void tm_symbols_search_file_or_dir(tm_allocator_i *a, tm_symbol_tree_t *t
 	}
 }
 
-static void tm_symbols_search_and_save(tm_allocator_i *a, const char *input_path, const char *output_path)
+static void tm_symbols_search_and_save(tm_allocator_i *a, const char *input_path, const char *output_path, bool compress)
 {
 	tm_symbol_tree_t tree = { 0 };
 	uint64_t offset = 0;
 	char **string_buffer = 0;
 
 	tm_symbols_search_file_or_dir(a, &tree, &string_buffer, &offset, input_path);
-	tm_symbols_tree_finalize(&tree);
-	tm_symbols_save(&tree, string_buffer, output_path);
+
+	if (compress)
+		tm_symbols_save_compressed(a, &tree, string_buffer, output_path);
+	else
+		tm_symbols_save(&tree, string_buffer, output_path);
 
 	tm_symbol_tree_free(tm_allocator_api->system, &tree);
 	for (size_t i = 0; i < tm_carray_size(string_buffer); ++i)

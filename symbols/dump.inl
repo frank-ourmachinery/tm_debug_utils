@@ -13,7 +13,7 @@ static void tm_symbol_dump_node_to_user(const tm_symbol_tree_t *tree, uint32_t r
 
 	TM_INIT_TEMP_ALLOCATOR(ta);
 	char *buffer = tm_temp_alloc(ta, node->string_length + 1ull);
-	tm_os_api->file_io->read_at(file, node->byte_offset, buffer, node->string_length);
+	tm_os_api->file_io->read_at(file, node->string_start, buffer, node->string_length);
 	buffer[node->string_length] = '\0';
 	tm_logger_api->printf(TM_LOG_TYPE_INFO, "[0x%llx] \"%s\"\n", node->hash, buffer);
 	TM_SHUTDOWN_TEMP_ALLOCATOR(ta);
@@ -31,7 +31,7 @@ static void tm_symbol_dump_node_to_file(const tm_symbol_tree_t *tree, uint32_t r
 
 	TM_INIT_TEMP_ALLOCATOR(ta);
 	char *buffer = tm_temp_alloc(ta, node->string_length + 1ull);
-	tm_os_api->file_io->read_at(input_file, node->byte_offset, buffer, node->string_length);
+	tm_os_api->file_io->read_at(input_file, node->string_start, buffer, node->string_length);
 	buffer[node->string_length] = '\0';
 
 	const char *line = tm_temp_allocator_api->printf(ta, "[0x%llx] \"%s\"\n", node->hash, buffer);
@@ -47,14 +47,19 @@ static void tm_symbols_dump_file_to_user(tm_allocator_i *a, const char *input)
 	tm_file_o file = tm_os_api->file_io->open_input(input);
 	uint32_t page_count = 0;
 
-	tm_symbol_tree_t tree;
-	tm_os_api->file_io->read(file, &tree.node_count, sizeof(uint32_t));
-	tree.nodes = tm_alloc(a, tree.node_count * sizeof(tm_symbol_node_t));
-	tm_os_api->file_io->read(file, tree.nodes, tree.node_count * sizeof(tm_symbol_node_t));
+	// Currently we don't support dumping compressed files.
+	uint32_t flags;
+	tm_os_api->file_io->read(file, &flags, sizeof(uint32_t));
+	if (!(flags & TM_HDB_FLAGS_COMPRESSED)) {
+		tm_symbol_tree_t tree;
+		tm_os_api->file_io->read(file, &tree.node_count, sizeof(uint32_t));
+		tree.nodes = tm_alloc(a, tree.node_count * sizeof(tm_symbol_node_t));
+		tm_os_api->file_io->read(file, tree.nodes, tree.node_count * sizeof(tm_symbol_node_t));
 
-	tm_symbol_dump_node_to_user(&tree, 0, file, &page_count);
+		tm_symbol_dump_node_to_user(&tree, 0, file, &page_count);
 
-	tm_symbol_tree_free(a, &tree);
+		tm_symbol_tree_free(a, &tree);
+	}
 	tm_os_api->file_io->close(file);
 }
 
@@ -63,14 +68,20 @@ static void tm_symbols_dump_file_to_file(tm_allocator_i *a, const char *input, c
 	tm_file_o input_file = tm_os_api->file_io->open_input(input);
 	tm_file_o output_file = tm_os_api->file_io->open_output(output, true);
 
-	tm_symbol_tree_t tree;
-	tm_os_api->file_io->read(input_file, &tree.node_count, sizeof(uint32_t));
-	tree.nodes = tm_alloc(a, tree.node_count * sizeof(tm_symbol_node_t));
-	tm_os_api->file_io->read(input_file, tree.nodes, tree.node_count * sizeof(tm_symbol_node_t));
+	// Currently we don't support dumping compressed files.
+	uint32_t flags;
+	tm_os_api->file_io->read(input_file, &flags, sizeof(uint32_t));
+	if (!(flags & TM_HDB_FLAGS_COMPRESSED)) {
+		tm_symbol_tree_t tree;
+		tm_os_api->file_io->read(input_file, &tree.node_count, sizeof(uint32_t));
+		tree.nodes = tm_alloc(a, tree.node_count * sizeof(tm_symbol_node_t));
+		tm_os_api->file_io->read(input_file, tree.nodes, tree.node_count * sizeof(tm_symbol_node_t));
 
-	tm_symbol_dump_node_to_file(&tree, 0, input_file, output_file);
+		tm_symbol_dump_node_to_file(&tree, 0, input_file, output_file);
 
-	tm_symbol_tree_free(a, &tree);
+		tm_symbol_tree_free(a, &tree);
+	}
+
 	tm_os_api->file_io->close(input_file);
 	tm_os_api->file_io->close(output_file);
 }
