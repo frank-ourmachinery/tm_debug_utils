@@ -139,14 +139,12 @@ static const char *api__decode_hash(uint64_t hash, tm_temp_allocator_i *ta)
 
 				uint64_t offset = node->string_start & 7;
 				buffer = tm_temp_alloc(ta, encoded_length);
-				for (string_length = 0; offset < encoded_end; ++string_length) {
+				for (string_length = 0; offset < encoded_end; ++string_length)
 					buffer[string_length] = tm_huffman_tree_decode(decoding + i, code_buffer, &offset);
-				}
 
 				ta->realloc(ta->inst, code_buffer, encoded_length, 0);
 				ta->realloc(ta->inst, buffer, encoded_length, string_length);
-			}
-			else {
+			} else {
 				string_length = node->string_length;
 				buffer = tm_temp_alloc(ta, string_length + 1);
 				tm_os_api->file_io->read_at(file, node->string_start, buffer, string_length);

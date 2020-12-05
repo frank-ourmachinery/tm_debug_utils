@@ -1,5 +1,3 @@
-#include <foundation/api_types.h>
-
 static inline uint32_t tm_binary_handler_read_bits(const char *src, uint64_t *bit_offset, uint32_t count)
 {
 	uint32_t result = 0;

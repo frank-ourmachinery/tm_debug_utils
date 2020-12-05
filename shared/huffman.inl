@@ -181,7 +181,13 @@ static inline void private__tree_node_dump(const tm_huffman_tree_t *tree, uint32
 
 	if (node->data != '\0') {
 		buffer[bit] = '\0';
-		tm_logger_api->printf(TM_LOG_TYPE_DEBUG, "%c: %s\n", node->data, buffer);
+
+		// Don't print control characters, print the Unicode white square instead indicating a missing ideograph.
+		// The Huffman tree doesn't know about UTF-8 so these are likely multi-character glyphs being split up.
+		if (node->data >= ' ' && node->data <= '~')
+			tm_logger_api->printf(TM_LOG_TYPE_DEBUG, "%c: %s\n", node->data, buffer);
+		else
+			tm_logger_api->printf(TM_LOG_TYPE_DEBUG, u8"\u25A1: %s\n", buffer);
 	}
 	else {
 		buffer[bit] = '0';

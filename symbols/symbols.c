@@ -47,6 +47,9 @@ static void print_usage()
 		"	--search [STRING]\n"
 		"		Searches the database for the hash and returns the string that generated it.\n"
 		"\n"
+		"	--decimal\n"
+		"		Uses a radix of 10 instead of 16 when converting --search inputs to numbers.\n"
+		"\n"
 		"	-d\n"
 		"	--dump\n"
 		"		Logs a human readable version of the symbol database specified (with --input) or generated (with --generate).\n"
@@ -54,17 +57,13 @@ static void print_usage()
 		"	--page [NUMBER]\n"
 		"		When dumping a file to the user, stops after every [NUMBER] entries and waits for user input.\n"
 		"\n"
-		"	--decimal\n"
-		"		Uses a radix of 10 instead of 16 when converting --search inputs to numbers.\n"
-		"\n"
 		"	-g\n"
 		"	--generate\n"
 		"		Generates a symbols file for the specified files or for all child files in the current directory.\n"
 		"		This file contains The Machinery specific debugging information, like a hash lookup table.\n"
 		"\n"
-		"	-c\n"
-		"	--compress\n"
-		"		Compresses the strings in the symbols file (only active with --generate).\n"
+		"	--no-compression\n"
+		"		Disables the default string compression with --generate.\n"
 		"\n"
 		"	-i [STRING]\n"
 		"	--input [STRING]\n"
@@ -90,7 +89,7 @@ int main(int argc, char **argv)
 	TM_INIT_TEMP_ALLOCATOR(ta);
 	tm_logger_api->add_logger(tm_logger_api->default_logger);
 
-	bool compress = false;
+	bool compress = true;
 	bool generate = false;
 	bool dump = false;
 	int radix = 16;
@@ -106,7 +105,7 @@ int main(int argc, char **argv)
 		}
 		else if (arg_eql(argv[i], "-q", "--quiet")) loud = false;
 		else if (arg_eql(argv[i], "-g", "--generate")) generate = true;
-		else if (arg_eql(argv[i], "-c", "--compress")) compress = true;
+		else if (!strcmp(argv[i], "--no-compression")) compress = false;
 		else if (arg_eql(argv[i], "-d", "--dump")) dump = true;
 		else if (!strcmp(argv[i], "--decimal")) radix = 10;
 		else if (arg_eql(argv[i], "-i", "--input")) {
@@ -139,14 +138,12 @@ int main(int argc, char **argv)
 		}
 		else if (argv[i][0] == '-') {
 			tm_logger_api->printf(TM_LOG_TYPE_ERROR,
-				"dbgutils: unknown option --%s\n"
+				"dbgutils: unknown option '%s'\n"
 				"Try 'dbgutils --help' for available commands.\n", argv[i]);
 
 			return EXIT_FAILURE;
 		}
 	}
-
-	const tm_clock_o start_time = tm_os_api->time->now();
 
 	if (path)
 		tm_debug_utils_api->add_symbol_database(path);
@@ -156,8 +153,14 @@ int main(int argc, char **argv)
 	}
 
 	if (generate) {
+		const tm_clock_o start_time = tm_os_api->time->now();
+
 		if (!output) output = tm_temp_allocator_api->printf(ta, "%s/%s", tm_path_api_dir(argv[0], tm_path_api->split(argv[0], NULL), ta), tm_path_api->split(path, NULL));
 		tm_symbols_search_and_save(tm_allocator_api->system, path, output, compress);
+
+		const tm_clock_o end_time = tm_os_api->time->now();
+		const float elapsed = (float)tm_os_api->time->delta(end_time, start_time);
+		printf_loud("dbgutils: done generating, took %.3f s\n", elapsed);
 	}
 
 	if (dump) {
@@ -172,9 +175,6 @@ int main(int argc, char **argv)
 			tm_symbols_dump_file_or_dir_to_user(tm_allocator_api->system, input_file);
 	}
 
-	const tm_clock_o end_time = tm_os_api->time->now();
-	const float elapsed = (float)tm_os_api->time->delta(end_time, start_time);
-	printf_loud("\ndbgutils: done, took %.3f s\n", elapsed);
 	TM_SHUTDOWN_TEMP_ALLOCATOR(ta);
 	return EXIT_SUCCESS;
 }
