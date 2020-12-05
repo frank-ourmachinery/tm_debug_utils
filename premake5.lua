@@ -116,5 +116,6 @@ project "symbols"
 	links { "foundation.lib", "tm_debug_utils_static.lib" }
 	defines { "TM_LINKS_FOUNDATION", "TM_LINKS_DEBUG_UTILS" }
     sysincludedirs { "" }
+	dependson { "debug-utils-static" }
     filter "platforms:Win64"
         targetdir "$(TM_SDK_DIR)/bin/%{cfg.buildcfg}"
