@@ -36,15 +36,16 @@ static void tm_symbols_save_compressed(tm_allocator_i *a, tm_symbol_tree_t *tree
 
 	tm_huffman_tree_t encoding = tm_huffman_tree_create(a, strings);
 	const size_t string_buffer_start = (sizeof(uint32_t) * 3 + tree->node_count * sizeof(tm_symbol_node_t) + encoding.node_count * sizeof(tm_huffman_node_t)) << 3;
-	char *buffer = tm_alloc(a, buffer_capacity);
-	memset(buffer, 0, buffer_capacity);
+	char *buffer = tm_alloc(a, buffer_capacity << 1);
+	memset(buffer, 0, buffer_capacity << 1);
 
 	size_t buffer_offset_bits = 0;
 	for (size_t i = 0, j = 0; i < string_count; ++i, j = 0) {
 		const uint32_t node_idx = tm_symbol_tree_search(tree, tm_murmur_hash_string_inline(strings[i]));
 		tree->nodes[node_idx].string_start = string_buffer_start + buffer_offset_bits;
 
-		for (char c = *strings[i]; c != '\0'; c = strings[i][++j]) {
+		const uint8_t *uni_str = (const uint8_t *)strings[i];
+		for (uint8_t c = *uni_str; c != '\0'; c = uni_str[++j]) {
 			const uint32_t bit_count = tm_huffman_code__bit_count(encoding.code_lut[c]);
 			const uint32_t code_word = tm_huffman_code__code_word(encoding.code_lut[c]);
 			tm_binary_handler_write_bits(buffer, &buffer_offset_bits, code_word, bit_count);
@@ -53,7 +54,8 @@ static void tm_symbols_save_compressed(tm_allocator_i *a, tm_symbol_tree_t *tree
 		tree->nodes[node_idx].string_length = (uint32_t)(buffer_offset_bits - (tree->nodes[node_idx].string_start - string_buffer_start));
 	}
 
-	printf_loud("\ndbgutils: compression saved %zu bytes.\n", buffer_capacity - (buffer_offset_bits >> 3));
+	if (buffer_capacity > buffer_offset_bits >> 3)
+		printf_loud("\ndbgutils: compression saved %zu bytes.\n", buffer_capacity - (buffer_offset_bits >> 3));
 
 	const char *path_with_extension = tm_temp_allocator_api->printf(ta, "%s.hdb", path);
 	tm_file_o file = tm_os_api->file_io->open_output(path_with_extension, false);
@@ -66,7 +68,7 @@ static void tm_symbols_save_compressed(tm_allocator_i *a, tm_symbol_tree_t *tree
 
 	tm_os_api->file_io->write(file, buffer, buffer_offset_bits >> 3);
 	tm_huffman_tree_free(a, &encoding);
-	tm_free(a, buffer, buffer_capacity);
+	tm_free(a, buffer, buffer_capacity << 1);
 
 	tm_os_api->file_io->close(file);
 	TM_SHUTDOWN_TEMP_ALLOCATOR(ta);

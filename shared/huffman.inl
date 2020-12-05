@@ -22,7 +22,7 @@ typedef struct tm_huffman_tree_t
 
 typedef struct private__huffman_heap_node_t
 {
-	char data;
+	uint8_t data;
 	TM_PAD(3);
 	uint32_t frequency;
 	struct private__huffman_heap_node_t *left;
@@ -64,21 +64,21 @@ static inline private__huffman_heap_node_t *private__huffman_get_min(private__hu
 	return result;
 }
 
-static inline private__huffman_heap_node_t *private__huffman_node_create(tm_temp_allocator_i *ta, char data, uint32_t frequency)
+static inline private__huffman_heap_node_t *private__huffman_node_create(tm_temp_allocator_i *ta, uint8_t data, uint32_t frequency)
 {
 	private__huffman_heap_node_t *result = tm_temp_alloc(ta, sizeof(private__huffman_heap_node_t));
 	*result = (private__huffman_heap_node_t) { .data = data, .frequency = frequency };
 	return result;
 }
 
-static inline uint32_t private__huffman_convert_heap_to_free(tm_huffman_tree_t *tree, const private__huffman_heap_node_t *root, uint32_t *idx)
+static inline uint32_t private__huffman_convert_heap_to_tree(tm_huffman_tree_t *tree, const private__huffman_heap_node_t *root, uint32_t *idx)
 {
 	const uint32_t i = (*idx)++;
 
 	tree->nodes[i] = (tm_huffman_node_t) {
 		.data = root->data,
-		.left = root->left ? private__huffman_convert_heap_to_free(tree, root->left, idx) : 0,
-		.right = root->right ? private__huffman_convert_heap_to_free(tree, root->right, idx) : 0
+		.left = root->left ? private__huffman_convert_heap_to_tree(tree, root->left, idx) : 0,
+		.right = root->right ? private__huffman_convert_heap_to_tree(tree, root->right, idx) : 0
 	};
 
 	return i;
@@ -100,11 +100,15 @@ static inline tm_huffman_tree_t tm_huffman_tree_create(tm_allocator_i *a, const 
 {
 	TM_INIT_TEMP_ALLOCATOR(ta);
 	const uint32_t string_count = (uint32_t)tm_carray_size(strings);
+	if (string_count == 0)
+		return (tm_huffman_tree_t) { 0 };
 
 	// Calculate character frequency.
+	// This needs to be done with unsigned strings in order to handle unicode characters.
 	uint32_t frequencies[0xFF] = { 0 };
 	for (uint32_t i = 0, j = 0; i < string_count; ++i, j = 0) {
-		for (char c = *strings[i]; c != '\0'; c = strings[i][++j])
+		const uint8_t *uni_str = (const uint8_t *)strings[i];
+		for (uint8_t c = *uni_str; c != '\0'; c = uni_str[++j])
 			++frequencies[c];
 	}
 
@@ -117,7 +121,7 @@ static inline tm_huffman_tree_t tm_huffman_tree_create(tm_allocator_i *a, const 
 	heap.data = tm_temp_alloc(ta, heap.capacity * sizeof(private__huffman_heap_node_t *));
 	for (uint32_t i = 0, j = 0; i < TM_ARRAY_COUNT(frequencies); ++i) {
 		if (frequencies[i])
-			heap.data[j++] = private__huffman_node_create(ta, (char)i, frequencies[i]);
+			heap.data[j++] = private__huffman_node_create(ta, (uint8_t)i, frequencies[i]);
 	}
 
 	// Build heap.
@@ -147,7 +151,7 @@ static inline tm_huffman_tree_t tm_huffman_tree_create(tm_allocator_i *a, const 
 	// Create result tree and lookup.
 	tm_huffman_tree_t tree = { .node_count = (heap.capacity << 1) - 1 };
 	tree.nodes = tm_alloc(a, tree.node_count * sizeof(tm_huffman_node_t));
-	private__huffman_convert_heap_to_free(&tree, root, &i);
+	private__huffman_convert_heap_to_tree(&tree, root, &i);
 	private__huffman_set_code_word(&tree, root, 1, 0);
 
 	TM_SHUTDOWN_TEMP_ALLOCATOR(ta);
@@ -182,12 +186,11 @@ static inline void private__tree_node_dump(const tm_huffman_tree_t *tree, uint32
 	if (node->data != '\0') {
 		buffer[bit] = '\0';
 
-		// Don't print control characters, print the Unicode white square instead indicating a missing ideograph.
-		// The Huffman tree doesn't know about UTF-8 so these are likely multi-character glyphs being split up.
+		// Print control characters in their hex form, these are split up unicode characters.
 		if (node->data >= ' ' && node->data <= '~')
 			tm_logger_api->printf(TM_LOG_TYPE_DEBUG, "%c: %s\n", node->data, buffer);
 		else
-			tm_logger_api->printf(TM_LOG_TYPE_DEBUG, u8"\u25A1: %s\n", buffer);
+			tm_logger_api->printf(TM_LOG_TYPE_DEBUG, "0x%X: %s\n", node->data & 0xFF, buffer);
 	}
 	else {
 		buffer[bit] = '0';
@@ -199,6 +202,8 @@ static inline void private__tree_node_dump(const tm_huffman_tree_t *tree, uint32
 
 static inline void tm_huffman_tree_dump(const tm_huffman_tree_t *tree)
 {
-	char buffer[0xFF];
-	private__tree_node_dump(tree, 0, buffer, 0);
+	if (tree->node_count) {
+		char buffer[0xFF];
+		private__tree_node_dump(tree, 0, buffer, 0);
+	}
 }
