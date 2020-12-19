@@ -13,7 +13,7 @@ The Machinery build tool `tmbuild` is the easiest way to build:
 - Copy `tmbuild.exe` from any [The Machinery release](https://ourmachinery.com/beta.html) into the main directory.
 - Run `tmbuild.exe`.
 
-## Building with `premake5` and your fav build tool
+## Building with `premake5`
 
 You can also use [premake5](https://premake.github.io/download.html) directly:
 
@@ -27,7 +27,7 @@ You can also use [premake5](https://premake.github.io/download.html) directly:
 **Linux/Unix (with source code access)**
 
 - Make sure you have clang installed and the build essentials of your distribution or system.
-- Make sure your C compiler is clang
+- Make sure you are using clang as your C compiler
 - Copy `premake5` to the main directory.
 - Run `premake5 gmake`
 - All you need to do now is run with `make`
