@@ -137,7 +137,7 @@ static void tm_symbols_search_file(tm_allocator_i *a, tm_symbol_tree_t *tree, co
 		}
 
 		if (string_has_started) {
-			bytes_carried = max(1, chunk_length - string_start);
+			bytes_carried = tm_max(1, chunk_length - string_start);
 			memcpy(buffer, buffer + string_start, bytes_carried);
 		}
 	}
@@ -188,7 +188,7 @@ static void tm_symbols_search_and_save(tm_allocator_i *a, const char *input_path
 {
 	tm_symbol_tree_t tree = { 0 };
 	uint64_t offset = 0;
-	char **string_buffer = 0;
+	const char **string_buffer = 0;
 
 	tm_symbols_search_file_or_dir(a, &tree, &string_buffer, &offset, input_path);
 
@@ -199,6 +199,6 @@ static void tm_symbols_search_and_save(tm_allocator_i *a, const char *input_path
 
 	tm_symbol_tree_free(tm_allocator_api->system, &tree);
 	for (size_t i = 0; i < tm_carray_size(string_buffer); ++i)
-		tm_free(a, string_buffer[i], strlen(string_buffer[i]) + 1);
+		tm_free(a, (char *)string_buffer[i], strlen(string_buffer[i]) + 1);
 	tm_carray_free(string_buffer, a);
 }
