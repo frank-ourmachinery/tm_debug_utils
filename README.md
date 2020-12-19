@@ -7,14 +7,31 @@ It has two main component:
 
 # Building
 
+## Building with `tmbuild`
+
 The Machinery build tool `tmbuild` is the easiest way to build:
 - Copy `tmbuild.exe` from any [The Machinery release](https://ourmachinery.com/beta.html) into the main directory.
 - Run `tmbuild.exe`.
 
-You can also use [premake](https://premake.github.io/download.html) directly:
+## Building with `premake5` and your fav build tool
+
+You can also use [premake5](https://premake.github.io/download.html) directly:
+
+**Windows and Visual Studio**
+
 - Copy `premake5.exe` to the main directory.
-- Run `premake5.exe` with the desired configuration (vs2019 is what I use).
-- Build with your desired development environment.
+- Run `premake5.exe vs2019` with the desired configuration. You could also use `vs2017`.
+- Open the generated solution file `debug-utils.sln` with e.g. Visual Studio 2019
+
+
+**Linux/Unix (with source code access)**
+
+- Make sure you have clang installed and the build essentials of your distribution or system.
+- Make sure your C compiler is clang
+- Copy `premake5` to the main directory.
+- Run `premake5 gmake`
+- All you need to do now is run with `make`
+
 
 # tm_debug_utils_api
 
